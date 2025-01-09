@@ -27,6 +27,7 @@ func main() {
 
 	r := gin.Default()
 	r.Use(middleware.CORS())
+	r.Use(middleware.ErrorHandler())
 	docs.SwaggerInfo.BasePath = "/"
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))

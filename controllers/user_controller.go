@@ -70,6 +70,8 @@ func Login(c *gin.Context) {
 		Password string `json:"password" binding:"required"`
 	}
 
+	// panic("ssssss")
+
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
