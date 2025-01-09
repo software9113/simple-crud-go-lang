@@ -23,14 +23,26 @@ import (
 func main() {
 	cfg := config.LoadConfig()
 
+	// Configure logging
+	config.ConfigureLogger()
+
+	// Connect to database
 	database.ConnectDatabase(cfg.DatabaseURL)
 
-	r := gin.Default()
-	r.Use(middleware.CORS())
-	r.Use(middleware.ErrorHandler())
-	docs.SwaggerInfo.BasePath = "/"
+	// Run migrations
+	database.RunMigrations(database.DB)
 
+	r := gin.Default()
+
+	// Middleware
+	r.Use(middleware.CORS())
+	r.Use(middleware.LoggerAndErrorHandlerMiddleware())
+
+	// Swagger
+	docs.SwaggerInfo.BasePath = "/"
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
+	// Routes
 	r.POST("/register", controllers.RegisterUser)
 	r.POST("/login", controllers.Login)
 
