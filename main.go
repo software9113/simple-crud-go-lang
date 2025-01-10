@@ -41,6 +41,8 @@ func main() {
 
 	r := gin.Default()
 
+	// Apply the Correlation Middleware
+	r.Use(middleware.MiddlewareCorrelationID())
 	// Middleware
 	r.Use(middleware.CORS())
 	r.Use(middleware.LoggerAndErrorHandlerMiddleware())
