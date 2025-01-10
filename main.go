@@ -6,6 +6,8 @@ import (
 	"gin-tutorial/database"
 	"gin-tutorial/docs"
 	"gin-tutorial/middleware"
+	"gin-tutorial/repository"
+	"gin-tutorial/services"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -32,6 +34,11 @@ func main() {
 	// Run migrations
 	database.RunMigrations(database.DB)
 
+	// Initialize dependencies
+	userRepo := repository.NewUserRepository(database.DB) // Returns the UserRepository interface
+	userService := services.NewUserService(userRepo)
+	userController := controllers.NewUserController(userService)
+
 	r := gin.Default()
 
 	// Middleware
@@ -43,11 +50,11 @@ func main() {
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Routes
-	r.POST("/register", controllers.RegisterUser)
-	r.POST("/login", controllers.Login)
+	r.POST("/register", userController.RegisterUser)
+	r.POST("/login", userController.Login)
 
 	authorized := r.Group("/").Use(middleware.AuthMiddleware(cfg.JWTSecret))
-	authorized.GET("/profile", controllers.GetProfile)
+	authorized.GET("/profile", userController.GetProfile)
 
 	r.Run(":" + cfg.Port)
 }

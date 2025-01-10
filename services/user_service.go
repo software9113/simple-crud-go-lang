@@ -2,22 +2,40 @@ package services
 
 import (
 	"errors"
-	"gin-tutorial/database"
 	"gin-tutorial/models"
+	"gin-tutorial/repository"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
-	"gorm.io/gorm"
 )
 
-// Secret key for JWT generation
 var jwtSecretKey = []byte("your_jwt_secret_key")
 
-// RegisterUserService handles user registration
-func RegisterUserService(username, email, password string) (*models.User, error) {
+// UserService defines the interface for the user service
+type UserService interface {
+	RegisterUser(username, email, password string) (*models.User, error)
+	LoginUser(email, password string) (*models.User, error)
+	GenerateJWT(username string) (string, error)
+	GetProfile(userID uint) (*models.User, error)
+}
+
+// userServiceImpl is the concrete implementation of UserService
+type userServiceImpl struct {
+	userRepo repository.UserRepository
+}
+
+// NewUserService creates a new UserService instance
+func NewUserService(userRepo repository.UserRepository) UserService {
+	return &userServiceImpl{
+		userRepo: userRepo,
+	}
+}
+
+// RegisterUser handles user registration
+func (us *userServiceImpl) RegisterUser(username, email, password string) (*models.User, error) {
 	// Check if user exists
-	var existingUser models.User
-	if err := database.DB.Where("email = ?", email).First(&existingUser).Error; err == nil {
+	existingUser, _ := us.userRepo.FindByEmail(email)
+	if existingUser != nil {
 		return nil, errors.New("user with this email already exists")
 	}
 
@@ -34,23 +52,19 @@ func RegisterUserService(username, email, password string) (*models.User, error)
 	}
 
 	// Save user to database
-	if err := database.DB.Create(&user).Error; err != nil {
+	if err := us.userRepo.Create(&user); err != nil {
 		return nil, errors.New("failed to create user")
 	}
 
 	return &user, nil
 }
 
-// LoginUserService authenticates the user
-func LoginUserService(email, password string) (*models.User, error) {
-	var user models.User
-
+// LoginUser authenticates the user
+func (us *userServiceImpl) LoginUser(email, password string) (*models.User, error) {
 	// Find user by email
-	if err := database.DB.Where("email = ?", email).First(&user).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("invalid credentials")
-		}
-		return nil, errors.New("database error")
+	user, err := us.userRepo.FindByEmail(email)
+	if err != nil {
+		return nil, errors.New("invalid credentials")
 	}
 
 	// Check password
@@ -58,11 +72,11 @@ func LoginUserService(email, password string) (*models.User, error) {
 		return nil, errors.New("invalid credentials")
 	}
 
-	return &user, nil
+	return user, nil
 }
 
 // GenerateJWT generates a JWT token for the user
-func GenerateJWT(username string) (string, error) {
+func (us *userServiceImpl) GenerateJWT(username string) (string, error) {
 	expirationTime := time.Now().Add(24 * time.Hour)
 	claims := &models.Claims{
 		Username: username,
@@ -75,15 +89,7 @@ func GenerateJWT(username string) (string, error) {
 	return token.SignedString(jwtSecretKey)
 }
 
-// GetProfileService retrieves a user's profile by ID
-func GetProfileService(userID uint) (*models.User, error) {
-	var user models.User
-	if err := database.DB.First(&user, userID).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("user not found")
-		}
-		return nil, errors.New("database error")
-	}
-
-	return &user, nil
+// GetProfile retrieves a user's profile by ID
+func (us *userServiceImpl) GetProfile(userID uint) (*models.User, error) {
+	return us.userRepo.FindByID(userID)
 }

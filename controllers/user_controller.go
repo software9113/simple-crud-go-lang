@@ -8,6 +8,25 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// UserController defines the interface for the user controller
+type UserController interface {
+	RegisterUser(c *gin.Context)
+	Login(c *gin.Context)
+	GetProfile(c *gin.Context)
+}
+
+// userControllerImpl is the concrete implementation of UserController
+type userControllerImpl struct {
+	userService services.UserService
+}
+
+// NewUserController creates a new UserController instance
+func NewUserController(userService services.UserService) UserController {
+	return &userControllerImpl{
+		userService: userService,
+	}
+}
+
 // @Summary Register a new user
 // @Description Create a new user with a username, email, and password
 // @Tags Auth
@@ -18,7 +37,7 @@ import (
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
 // @Router /register [post]
-func RegisterUser(c *gin.Context) {
+func (uc *userControllerImpl) RegisterUser(c *gin.Context) {
 	var input models.RegisterUserRequest
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -26,7 +45,7 @@ func RegisterUser(c *gin.Context) {
 		return
 	}
 
-	user, err := services.RegisterUserService(input.Username, input.Email, input.Password)
+	user, err := uc.userService.RegisterUser(input.Username, input.Email, input.Password)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -52,7 +71,7 @@ func RegisterUser(c *gin.Context) {
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 401 {object} models.ErrorResponse
 // @Router /login [post]
-func Login(c *gin.Context) {
+func (uc *userControllerImpl) Login(c *gin.Context) {
 	var input models.LoginRequest
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -60,13 +79,13 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	user, err := services.LoginUserService(input.Email, input.Password)
+	user, err := uc.userService.LoginUser(input.Email, input.Password)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
-	token, err := services.GenerateJWT(user.Username)
+	token, err := uc.userService.GenerateJWT(user.Username)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return
@@ -83,7 +102,7 @@ func Login(c *gin.Context) {
 // @Success 200 {object} models.ProfileResponse
 // @Failure 500 {object} models.ErrorResponse
 // @Router /profile [get]
-func GetProfile(c *gin.Context) {
+func (uc *userControllerImpl) GetProfile(c *gin.Context) {
 	user, exists := c.Get("user")
 	if !exists {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve user from context"})
