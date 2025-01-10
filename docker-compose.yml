@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/golang
+    depends_on:
+      db:
+        condition: service_healthy # Wait for PostgreSQL to be healthy
+    restart: always # Restart the app if it fails initially
+
+  db:
+    image: postgres:15
+    container_name: postgres_container
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: golang
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+volumes:
+  db_data:

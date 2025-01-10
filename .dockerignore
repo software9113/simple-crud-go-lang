@@ -1,0 +1,14 @@
+# Ignore the binary
+main
+
+# Ignore the vendor directory
+vendor/
+
+# Ignore temporary files and directories
+*.log
+*.tmp
+.DS_Store
+
+# Ignore IDE and editor config
+.vscode/
+.idea/
